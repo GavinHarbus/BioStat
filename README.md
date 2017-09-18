@@ -21,4 +21,4 @@
 	dev.off()
 	}
 
-![result](https://github.com/GavinHarbus/Mycode/blob/master/1.pdf)
+![result](1.pdf)
