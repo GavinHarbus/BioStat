@@ -92,7 +92,7 @@ sam.row.name = sample(row.name,n,replace=F)
 sub.data <- data2[, sam.col.name]
 ```
 ## <a id="3"></a>3. 基因表达水平情况概览（分析流程）
-## · 读取数据
+### · 读取数据
 ```
 library(GEOquery)
 gds4794 <- getGEO(filename='GDS4794.gz')
@@ -108,7 +108,7 @@ sam.col.name = "GSM1060766"
 sub.data <- data2[, sam.col.name]
 a <-sub.data[sub.data<500]
 ```
-## · 各统计指标计算
+### · 各统计指标计算
 ```
 x1<-min(a,na.rm=TRUE) # 计算最小值 
 x2<-max(a,na.rm=TRUE) # 计算最大值 
@@ -119,7 +119,7 @@ ds=density(a,na.rm=TRUE)
 mode <- ds$x[which.max(ds$y)]
 quan<-quantile(a,na.rm=TRUE) # 计算四分位数 (0%,25%,50%,75%,100%) 
 ```
-## · 绘制频率分布直方图
+### · 绘制频率分布直方图
 ```
 dnorm_png<-png("d1-means-medium-mode-test.png") # 定义图片文档
 hist(a, freq = F, breaks = 100) # 绘制频率分布直方图 
@@ -131,7 +131,7 @@ abline(v=quan,lty=3,lwd=3,col="blue") # 增加四分位数线
 dev.off() # 保存图片文档
 ```
 ![](d1-means-medium-mode-test.png)
-## · 堆积图
+### · 堆积图
 ```
 n=5
 sam.col.name = sample(col.name,n,replace=F)
@@ -156,7 +156,7 @@ dev.off()
 ```
 ![](barplot.png)
 ![](barplot2.png)
-## · 频率分布曲线图
+### · 频率分布曲线图
  ```
 data<-Table(gds4794)
 data2 <- log(data[,3:67])
@@ -172,6 +172,6 @@ curve(dnorm(x,mean(data2[,i], na.rm=TRUE), sd(data2[,i], na.rm=TRUE)), add=TRUE 
 dev.off()
  ```
  ![](all-hist.png)
-## · 数据标准化处理
+### · 数据标准化处理
 取log，之后操作如上  
 中间也可以绘制boxplot查看整体分布状况  
