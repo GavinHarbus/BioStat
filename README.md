@@ -1,6 +1,10 @@
 #生物信息统计常用方法与分析流程
-[TOC]
-## 1. 读取数据
+## 目录
+* [读取数据](#1)
+* [数据预处理](#2)
+* [基因表达水平情况概览（分析流程）](#3)
+
+## <a id="1"></a>1. 读取数据
 ### 安装GEOquery
 ```source("http://bioconductor.org/biocLite.R")
 biocLite("GEOquery")
@@ -23,7 +27,7 @@ infile = "xxxx.csv"
 mydata = read.table(infile,header=TRUE,sep="\t")
 #转换格式-有些情况下有必要mydata <- as.data.frame(mydata)
 ```
-## 2. 数据预处理
+## <a id="2"></a>2. 数据预处理
 ### 分类数据提取
 ```
 total <- subset(data,youraim=="XXXX")
@@ -87,7 +91,7 @@ sam.row.name = sample(row.name,n,replace=F)
 #提取子数据集
 sub.data <- data2[, sam.col.name]
 ```
-## 3. 基因表达水平情况概览（分析流程）
+## <a id="3"></a>3. 基因表达水平情况概览（分析流程）
 ## · 读取数据
 ```
 library(GEOquery)
