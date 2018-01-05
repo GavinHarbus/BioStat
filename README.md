@@ -1,4 +1,5 @@
 #生物信息统计常用方法与分析流程
+[TOC]
 ## 1. 读取数据
 ### 安装GEOquery
 ```source("http://bioconductor.org/biocLite.R")
