@@ -3,6 +3,8 @@
 * [读取数据](#1)
 * [数据预处理](#2)
 * [基因表达水平情况概览（分析流程）](#3)
+* [一般性分类数据分析流程](#4)
+* [列联表数据分析流程](#5)
 
 ## <a id="1"></a>1. 读取数据
 ### 安装GEOquery
@@ -90,6 +92,9 @@ sam.row.name = sample(row.name,n,replace=F)
 
 #提取子数据集
 sub.data <- data2[, sam.col.name]
+
+#重复抽样100次
+x <- replicate(100, sample(a, size=100, replace = FALSE))
 ```
 ## <a id="3"></a>3. 基因表达水平情况概览（分析流程）
 ### · 读取数据
@@ -156,7 +161,7 @@ dev.off()
 ```
 ![](barplot.png)
 ![](barplot2.png)
-### · 频率分布曲线图
+### · 概率分布曲线图
  ```
 data<-Table(gds4794)
 data2 <- log(data[,3:67])
@@ -175,3 +180,110 @@ dev.off()
 ### · 数据标准化处理
 取log，之后操作如上  
 中间也可以绘制boxplot查看整体分布状况  
+## <a id="4"></a>4. 一般性分类数据分析流程
+### · 首先可绘制整体boxplot观察大体情况，然后进行下述操作
+### · 正态性检验
+```
+shapiro.test(x)
+```
+### · 方差齐性检验
+```
+bartlett.test(x)#适用于服从正态分布的数据，且容易造成假阳性判断
+
+#9个对象，4种频率【9行4列】（自己按条件修改参数）
+data2<-data.frame(X=c(data[,2],data[,3],data[,4],data[,5]), A=factor(rep(1:4,rep(9,4))))
+
+library(car)leveneTest(X~A,data=data2)#更为稳健的方差齐性检验方法
+
+fligner.test(X~A,data=data2)#非参数的检验方法，完全不依赖于对分布的假设
+```
+### · t检验
+```
+#随机数生成set.seed(1)a<-seq(0,100,length.out=100)set.seed(2)b<-seq(0,100,length.out=100)#t 检验t.test(a,b,var.equal=TRUE) #等方差t检验t.test(a,b) #异方差 t 检验
+
+#H0:μ1=μ2, H1:μ1<μ2【等方差单侧检验】t.test(x, y, var.equal=TRUE, alternative = "less")
+
+#H0:μ1=μ2, H1:μ1<μ2【t'检验(异方差单侧检验-Welch t检验)】t.test(x,y, alternative = "less")
+
+#H0:μ1=μ2, H1:μ1≠μ2【等方差双侧检验】t.test(x2, y2, var.equal=TRUE, alternative = "two.sided")
+
+#H0:μ1=μ2, H1:μ1≠2【t'检验(异方差双侧检验-Welch t检验)】t.test(x2,y2, alternative = "two.sided")
+```
+### · Wilcoxon符号秩和检验
+```
+#H0:M1=M2, H1:M1≠M2【双侧】wilcox.test(x2, y2, alternative = "two.sided")
+
+#H0:M1=M2, H1:M1<M2【单侧】wilcox.test(x, y, alternative = "less")
+```
+### · Kruskal-Wallis检验（一组多个独立样本的秩和检验）
+```
+install.packages("agricolae")
+library( agricolae)
+#H0:M1=M2=M3, H1:三者不等
+kruskal.test(X~A,data=data2)
+
+#单因素方差分析
+#多重比较
+```
+### · Friedman检验（多组样本的秩和检验）
+```
+apply(data[,2:5],2,shapiro.test)#正态性检验
+
+#然后方差齐性检验
+
+dm<-as.matrix(data[,2:5])dimnames(dm) <- list(1:9, c("A", "B", "C", "D"))friedman.test(dm)#Friedman检验
+
+#单因素方差分析
+m<-aov(X~A,data=data2)summary(m）
+
+#多重比较
+mm<-TukeyHSD(m)mmpng("e12_data-3-1_TurkeyHSD_plot.png")plot(mm)dev.off()
+```
+![](e12_data-3-1_TurkeyHSD_plot.png)
+## <a id="5"></a>5. 列联表数据分析流程
+等位基因频率 | 高血压组(n=218) | 对照组(n=301)  
+----|----|----
+I | 52.9%(115) | 40.1%(121)
+V | 47.1%(103) | 59.9%(180)
+基因型频率 |
+II | 7.8%(17) | 15.9%(48)
+IV | 90.4%(197) | 48.5%(146)
+VV | 1.8%(4) | 35.5%(107)
+### · Kappa一致性测量
+```
+#等位基因频率的 Kappa 一致性测量
+x<-cbind(c(115,103),c(121,180))library(vcd)Kappa(x)
+```
+### · 卡方检验
+```
+#等位基因频率x<-cbind(c(115,103),c(121,180))
+chisq.test(x,correct=F)#卡方独立性检验/等比例检验
+
+x<-c(121,180)p<-c(52.9,47.1)chisq.test(x, p = p, rescale.p = TRUE)#卡方拟合优先度检验
+```
+### · 转化列联表为2*2格式
+ | 高血压(D+) | 对照组(D-) | 合计
+----|----|----|----
+IV(E+) | 197 | 146 | 343
+II+IV(E-) | 21 | 155 | 176
+合计 | 218 | 301 | 519
+### · 风险比、概率比、使用概率计算的几率比
+```
+RR = (197/343)/(21/176) = 4.81355OR = (197*155)/(21*146) = 9.95923p1=p(D+|E+)=197/343 = 0.57 -> odds1 = p1(1-p1) = 0.25
+p2=p(D+|E-)=21/176 = 0.12 -> odds2 = p2(1-p2) = 0.11
+OR' = odds1/odds2 = 2.27
+``` 
+### · 样本量的计算
+```
+调查高血压组中IV基因型的比例(± 5%区间)，α=0.05，π=0.9n = (1.96/0.05)2 × (0.9×0.1) = 138.2976 ≈ 139
+
+调查高血压组中IV基因型的比例(± 2.5%区间)，α=0.05，π=0.9
+n = (1.96/0.025)2 × (0.9×0.1) = 553.1904 ≈ 554
+->要求比例越接近真实情况，样本量需求越大
+
+调查对照组中IV基因型的比例(± 2.5%区间)，α=0.05，π=0.5n = (1.96/0.025)2 × (0.5×0.5) = 1536.64 ≈ 1537->不同基因型比例分布越均匀，样本量需求越大
+```
+### · 若是表中出现极端数据，则使用Fisher精确检验
+```
+fisher.test()
+```
