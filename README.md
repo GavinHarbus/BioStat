@@ -5,6 +5,7 @@
 * [基因表达水平情况概览（分析流程）](#3)
 * [一般性分类数据分析流程](#4)
 * [列联表数据分析流程](#5)
+* [基因相关性分析](#6)
 
 ## <a id="1"></a>1. 读取数据
 ### 安装GEOquery
@@ -287,3 +288,161 @@ n = (1.96/0.025)2 × (0.9×0.1) = 553.1904 ≈ 554
 ```
 fisher.test()
 ```
+## <a id="6"></a>6. 基因相关性分析
+### · Pearson相关性分析
+```
+#变量初始化，用来存放计算结果中的 p.value 和相关系数 cor 值
+p <- NULLr <- NULL
+a <- unlist(data[sam.row.name,3:67])
+gene_name_a <- as.character(data[sam.row.name,2])
+
+for(i in 1:nrow(data)) {	if(rownames(data)[i] != sam.row.name) {		b <- unlist(data[i,3:67])		#pearson 相关系数计算及显著性检验		x <- cor.test(a,b, method="pearson")
+		p <- c(p,x$p.value)
+		r <- c(r,x$estimate)	}
+}
+
+datanames <- data[data$ID_REF!=sam.row.name,2]
+names(p)<-datanames
+names(r)<-datanames
+
+#设定阈值进行筛选
+p_value = 0.05
+r_cutoff = 0.5
+#筛选p2 <- p[p<p_value]
+r2 <- r[r>r_cutoff]
+#查看筛选结果
+length(p2)length(r2)#计算 p2 和 r2 相关基因名称的交集->与数据行 a 对应基因表达水平具有较高相关性的基因
+genes <- intersect(names(p2),names(r2))length(genes)
+tail(genes)#查看有无非法项
+
+#合并有效基因名称genes2 <-c(gene_name_a,genes[1:787]) #输出基因名称out = "pearson-related-genes.csv"write.table(genes2,out)
+```
+### · 线性回归分析
+```
+rownames(data)<-data[,1]
+#随机抽取 1 行数据
+n=1
+#按行随机抽样
+row.name = rownames(data)
+sam.row.name = sample(row.name,n,replace=F)
+sam.row.name #查看抽中的数据行【记录】
+a <- unlist(data[sam.row.name,3:67])
+gene_name_a <- as.character(data[sam.row.name,2])
+gene_name_a #查看抽中的数据行【记录】
+
+p=NULL
+r=NULL
+xl=NULL
+jj=NULL
+#基因表达谱遍历
+for(i in 1:nrow(data)){
+	if(rownames(data)[i] != sam.row.name){
+		b <- unlist(data[i,3:67])
+		c <- lm(a~b+1)
+		p <- c(p,pf(as.numeric(summary(lm.sol)$fstatistic[1]), as.numeric(summary(lm.sol)$fstatistic[2]), as.numeric(summary(lm.sol)$fstatistic[3]), lower.tail = FALSE))
+		r <- c(r,summary(c)$r.squared)
+		jj <- c(jj,summary(c)$coef[1,1])
+		xl <- c(xl,summary(c)$coef[2,1])
+	}
+}
+datanames <- data[data$ID_REF!=sam.row.name,2]
+dataids <- data[data$ID_REF!=sam.row.name,1]
+names(p)<-datanames
+names(r)<-datanames
+names(jj)<-datanames
+names(xl)<-datanames
+
+target <- cbind.data.frame(dataids,datanames,xl,jj,r,p)
+
+#设定阈值进行筛选
+p_value = 0.001
+r_cutoff = 0.7
+#筛选
+
+p2 <- p[p<p_value]
+r2 <- r[r>r_cutoff]
+result <- target[target$p<p_value&target$r>r_cutoff,1:6]
+out = "regression-genes.csv"
+write.csv(result,out,row.names=F)
+```
+```
+#线性回归统计图
+maxr <- max(result$r)
+maxgene <- result[result$r==maxr,1]
+maxgene
+aimgene <- unlist(data["221239_s_at",3:67])
+finalresult <- lm(a~aimgene+1)
+png("regression.png")
+par(mfrow=c(2,2))
+plot(finalresult)
+dev.off()
+```
+![](regression.png)
+
+### · 单因素方差分析
+```
+aov(a~aimgene)
+```
+### · 多因素方差分析
+```
+rownames(data)<-data[,1]
+n=1#随机抽取至少 1 列数据
+row.names<-rownames(data)
+sam.row.name <- sample(row.names,n,replace=F)
+#sam.row.name <- "LIMN_1790218"
+ge<-data.frame(x<-t(data[sam.row.name,3:14]), A<- factor(substring(Columns(gds6100)$protocol,1,9)), B<- factor(substring(Columns(gds6100)$time,6)))
+shapiro.test(x)#正态性检验
+bartlett.test(x~A,data=ge)#方差齐性检验
+bartlett.test(x~B,data=ge)#方差齐性检验
+
+#绘图查看数据分布规律
+png("3.png")
+par(mfrow=c(2,2),las=2, cex.axis=1.2, cex.lab=1.2) 
+plot(x~A+B,data=ge)
+#attach(ge)
+interaction.plot(A,B,x,legend=F) 
+interaction.plot(B,A,x,legend=F)
+dev.off()
+
+#不考虑交互作用
+ge.aov<-aov(x~A+B,data=ge)
+summary(ge.aov)
+
+#考虑交互作用
+ge.aov2<-aov(x~A*B,data=ge)
+summary(ge.aov2)
+```
+### · 协方差分析
+```
+row.names<-rownames(data)
+sam.row.name <- sample(row.names,n,replace=F)
+n <- 1
+ge<-data.frame(y<-t(data[sam.row.name,3:14]), A<-
+factor(substring(Columns(gds6100)$protocol,1,9)), x<-
+as.numeric(substring(Columns(gds6100)$time,6)))
+ge
+#正态性检验
+shapiro.test(y)
+#方差齐性检验
+bartlett.test(y~A,data=ge)
+bartlett.test(y~x,data=ge)
+
+#绘图查看数据特征
+par(mfrow=c(2,2),las=2, cex.axis=1.2, cex.lab=1.2)
+plot(y~x+A,data=ge)
+#attach(ge)
+interaction.plot(x,A,y,legend=F)
+interaction.plot(A,x,y,legend=F)
+#不考虑交互作用
+ge.aov<-aov(y~x+A,data=ge)
+summary(ge.aov) #查看协方差分析后的统计评估图-4 张 
+par(mfrow=c(2,2), cex.axis=1.2, cex.lab=1.2) 
+plot(ge.aov)
+ 
+#考虑交互作用
+ge.aov2<-aov(y~x:A,data=ge)
+summary(ge.aov2) #查看协方差分析后的统计评估图-4 张 
+par(mfrow=c(2,2), cex.axis=1.2, cex.lab=1.2) 
+plot(ge.aov2)
+```
+![](3.png)
