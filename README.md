@@ -6,6 +6,8 @@
 * [一般性分类数据分析流程](#4)
 * [列联表数据分析流程](#5)
 * [基因相关性分析](#6)
+* [基因整体关系分析（主成分分析与聚类分析）](#7)
+* [时间序列数据分析](#8)
 
 ## <a id="1"></a>1. 读取数据
 ### 安装GEOquery
@@ -446,3 +448,391 @@ par(mfrow=c(2,2), cex.axis=1.2, cex.lab=1.2)
 plot(ge.aov2)
 ```
 ![](3.png)
+
+### · 多元线性回归分析
+```
+#两两组合绘制散点图和拟合曲线，从总体上看看不同变量之间的关联
+png("lec10_Healthy_Breakfast_pairs.png")pairs(data[,4:16],panel=panel.smooth)dev.off()
+```
+![](lec10_Healthy_Breakfast_pairs.png)
+
+```
+#以“rating”数据列为因变量(y),对其他所有数据列进行多元回归分析
+lm0<-lm(rating~.,data=data[,4:16])summary(lm0)
+
+#以【向后】逐步回归法计算最终多元回归模型(记录逐步回归的结果)
+lm.step<-step(lm0,direction="backward")summary(lm.step)
+
+#查看回归结果的统计图谱
+png(file = "lec10_Healthy_Breakfast_lm_data.png") par(mfrow=c(2,2))
+plot(lm.step)dev.off()
+```
+![](lec10_Healthy_Breakfast_lm_data.png)
+
+```
+#多重共线性分析
+library(car)vif(lm.step)
+#理想中的线性模型各个自变量应该是线性无关的，若自变量间存在共线性，则会降低回归系数的准确性。一般用方差膨胀因子VIF(Variance Inflation Factor)来衡量共线性，《统计学习》中认为 VIF 超过 5 或 10 就存在共线性，《R语言实战》中认为 VIF 大于 4 则存在共线性。理想中的线性模型 VIF=1，表 完全不存在共线性。
+```
+```
+#检查离群点、高杠杆点、强影响点
+#纵坐标超过+2 或小于-2 的点可被认为是离群点
+#水平轴超过 0.2 或 0.3 的就 是高杠杆值(通常为预测值的组合)。
+#圆圈大小与影响成比例，圆圈很大的点可能是对模型参数的估计造成的不成比例影响的强影响点。
+png("lec10_Healthy_Breakfast_influencePlot.png")
+influencePlot(lm.step,id.method = "identity", main="Influence Plot", sub="Circle size is proportional to Cook's distance")dev.off()
+```
+![](lec10_Healthy_Breakfast_influencePlot.png)
+
+```
+#若需要转换哑变量
+#将该数据表的第 2(mfr)和 3(type)两列数据，转换为哑变量(Proxy and dummy variables)，与4:16列重新组合成一个新的数据表;
+
+#新的数据矩阵共有 16-3+6+1=20列
+data2<-data.frame(matrix(NA,77,20))
+#哑变量转换
+for(i in 1:nrow(data)) {
+	#第二列 mfr 分类
+	if(data[i,2]=="A"){data2[i,1:6]<-c(0,0,0,0,0,0)} 
+	if(data[i,2]=="G"){data2[i,1:6]<-c(1,0,0,0,0,0)} 
+	if(data[i,2]=="K"){data2[i,1:6]<-c(0,1,0,0,0,0)} 
+	if(data[i,2]=="N"){data2[i,1:6]<-c(0,0,1,0,0,0)} 
+	if(data[i,2]=="P"){data2[i,1:6]<-c(0,0,0,1,0,0)} 
+	if(data[i,2]=="Q"){data2[i,1:6]<-c(0,0,0,0,1,0)} 
+	if(data[i,2]=="R"){data2[i,1:6]<-c(0,0,0,0,0,1)}
+	#第三列 type 分类
+	if(data[i,3]=="C"){data2[i,7]<-0} 
+	if(data[i,3]=="H"){data2[i,7]<-1}
+}
+#还有原第 4:16 列数据
+data2[,8:20]<-data[,4:16]
+
+#将原数据表的第一列数据作为新数据表的行标题，列标题作为新数据表相应列的列标题
+rownames(data2)<-data[,1]
+colnames(data2)<-c(paste("mfr_",c("G","K","N","P","Q","R"),sep=""),"type_CH",colnames(data)[4:16])
+
+#之后操作同上
+```
+### · Logistic回归
+```
+#随机抽取至少 10 行数据
+n=10 
+#使用以下代码进行循环测试:齐方差、F检验，p>0.1;齐方差、F检验，双因素p<0.1，无 交互作用;齐方差、F 检验，双因素 p 无要求，p<0.1 
+#按行随机抽样【实验结果中需要记录】
+row.names<-rownames(data)
+sam.row.name <- sample(row.names,n,replace=F)
+
+sam.row.name #查看抽中的数据行探针id
+subdata<-data[sam.row.name,3:67] #提取抽样数据
+
+#加上样本病理类型数据共 n+1 列
+#初始化数据表
+data2<-data.frame(matrix(NA,65, n+1)) #增加样本病理类型分类数据，肺癌=1，其他正常=0
+data2[,1]<-c(rep(1,23),rep(0,42))
+data2[,2:(n+1)]<-t(log(subdata)) #后面n列存放筛选出来的基因数据，注意矩阵行列 转换
+colnames(data2)<-c("y",paste("x",1:n,sep="")) #设定列标题y,x1,x2,...,x10
+
+glm0<-glm(y~.,family=binomial(link='logit'),data=data2)
+summary(glm0)
+
+#向后逐步回归法 
+glm.step<-step(glm0,direction="backward") 
+summary(glm.step)
+
+#绘制回归评估的 4 张图 
+png(file = "glm4.png") 
+par(mfrow=c(2,2)) 
+plot(glm.step) 
+dev.off()
+
+#car 包里的 influencePlot()函数能一次性同时检查离群点、高杠杆点、强影响点 
+library(car)
+png("influencePlot.png")
+influencePlot(glm.step,id.method = "identity", main="Influence Plot", sub="Circle size is proportional to Cook's distance")
+dev.off()
+
+#绘制 subdata 的热图 
+colnames(subdata)<-Columns(gds4794)$disease.state 
+png(file = "heatmap1.png") 
+heatmap(as.matrix(log(subdata)), Rowv = NA, Colv = NA) 
+dev.off()
+```
+![](heatmap1.png)
+
+### · 多项式回归
+```
+#设定颜色梯度区间并观察整体分布情况
+a<-max(data$JanTemp) - min(data$JanTemp) + 1 
+png(file = "plot_y_x_t_scatter.png")
+cPal <- colorRampPalette(c('green','red'))
+Cols <- cPal(a)[as.numeric(cut(data$JanTemp,breaks = a))] 
+plot(data$Long,data$Lat,pch = 20,col = Cols,cex=2)
+dev.off()
+```
+![](plot_y_x_t_scatter.png)
+
+```
+#局部多项式回归拟合探索
+#用loess来建立模型时重要的两个参数是span和degree，span表示数据子集的获取范围，取值越大则数据子集越多，曲线越为平滑。degree表示局部回归中的阶数，1表示线性回归，2表示二次回归(默认)，也可以取0，此时曲线退化为简单移动平均线
+
+#JanTemp~Long拟合 
+model2=loess(JanTemp~Long,data=data,span=0.8) 
+summary(model2)
+png(file = "plot_T_Long_loess.png")
+plot(data$JanTemp~data$Long,pch = 20,col = Cols,cex=2)
+lines(data$Long,model2$fit,col='red',lty=2,lwd=2)
+dev.off()
+```
+![](plot_T_Long_loess.png)
+
+```
+#二元线性回归的探索 
+lm.line<-lm(JanTemp~Lat+Long,data=data) 
+summary(lm.line) 
+png(file = "plot_y_x_t_lm.png")
+par(mfrow=c(2,2))
+plot(lm.line)
+dev.off()
+```
+![](plot_y_x_t_lm.png)
+
+```
+#Lat为线性，Long为三次项
+model <- lm(JanTemp ~ Lat + poly(Long,3),data=data)
+summary(model)
+#模型参数的置信区间 
+confint(model, level=0.95)
+#拟合VS残差图,如果这是一个拟合效果比较不错的模型，应该看不到任何一种模型的特征 
+png(file = "plot_T_Lat_Long_model_residuals.png")
+#par(mfrow=c(2,2))
+plot(model)
+plot(fitted(model),residuals(model))
+dev.off()
+```
+![](plot_T_Lat_Long_model_residuals.png)
+
+## <a id="7"></a>7. 基因整体关系分析（主成分分析与聚类分析)
+### · 主成成分分析
+```
+#分析各门课程成绩之间的相关性
+#一次性计算所有列数据两两之间的相关系数
+library(psych)
+corr.test(data)
+```
+```
+#数据的标准化处理前后的对比
+#原数据: 
+png("boxplot1.png") 
+boxplot(data,las=2) 
+dev.off()
+
+#数据中心化，使其均值变为零【原点】 
+data2<-scale(data, center=T,scale=F) 
+data2
+png("lboxplot2.png") 
+boxplot(data2,las=2)
+dev.off()
+#数据围绕 0 附近波动，但是方差变异很大
+
+#数据标准化，除以方差 
+data3<-scale(data, center=T, scale=T) 
+data3
+png("boxplot3.png") 
+boxplot(data3,las=2)
+dev.off()
+```
+```
+#标准化数据协方差矩阵的计算
+mc<-cov(data3)
+mc
+```
+```
+#主成分分析
+#cor:逻辑变量，若为cor=T表示用样本的相关矩阵R作主成分分析，cor=F, 表示用样本的协方差矩阵 s 作为主成分分析
+pca<-princomp(data,cor=T)
+pca2<-princomp(data2,cor=T)
+pca3<-princomp(data3,cor=T)
+#以上几个结果相同，princomp 自动进行上述中心化和标准化处理 
+pca
+
+#观察主成分分析的摘要信息:#保留变异累计达到 90%(四舍五入)的几个主成分信息。
+summary(pca)
+pca[]#查看详细信息
+pca$sdev #Standard deviation 
+pca$loadings #loading系数矩阵 
+pca$center #每一门课程均值=》数据中心化 
+pca$scale #每一门课程方差=》数据标准化
+pca$scores #每个样本每个组分的得分
+pca$loadings #查看loadins信息
+pca$loadings[] #查看loadings全部数值 #计算得到各个样本主成分的数据->等价于 pca$scores 
+pca_data <- predict(pca)
+```
+```
+#绘图查看主成分的变异贡献度
+#针对 princomp()对象的 plot 方法# #该方法可以绘制展示每个主成分与其自身方差贡献度相关性的悬崖碎石图。 
+png("lec12_bar-stone_plot1.png",width=600*3,height=3*300,res=72*3) 
+par(mfrow=c(1,2),las=2)
+#条形图
+plot(pca)
+abline(h=1,type="2",col="red")
+#主成分的碎石图
+screeplot(pca, type="lines")
+abline(h=1,type="2",col="red")
+dev.off()
+```
+![](lec12_bar-stone_plot1.png)
+
+```
+#绘制得分(scores)图:#了解新变量(主成分)数值对 30 个同学的区分程度到底如何。
+#=》主成分分布更为离散=》把 30 个样本区分的更好
+#得分图(Score plot) 
+png("lec12_15scores_scores_plot6.png",width=600*3,height=3*400,res=72*3) 
+par(mfrow=c(2,3))
+#主成分分析之后的前两个主成分得分绘图
+plot(pca$scores[,1], pca$scores[,2],type="n") 
+text(pca$scores[,1],pca$scores[,2],labels=rownames(pca$scores),cex=0.8) 
+plot(pca$scores[,1], pca$scores[,3],type="n") 
+text(pca$scores[,1],pca$scores[,3],labels=rownames(pca$scores),cex=0.8) 
+plot(pca$scores[,1], pca$scores[,4],type="n") 
+text(pca$scores[,1],pca$scores[,4],labels=rownames(pca$scores),cex=0.8) 
+plot(pca$scores[,2], pca$scores[,3],type="n") 
+text(pca$scores[,2],pca$scores[,3],labels=rownames(pca$scores),cex=0.8) 
+plot(pca$scores[,2], pca$scores[,4],type="n") 
+text(pca$scores[,2],pca$scores[,4],labels=rownames(pca$scores),cex=0.8) 
+plot(pca$scores[,3], pca$scores[,4],type="n") 
+text(pca$scores[,3],pca$scores[,4],labels=rownames(pca$scores),cex=0.8) 
+dev.off()
+```
+![](lec12_15scores_scores_plot6.png)
+
+```
+#绘制载荷(loadings)图: 了解新变量(主成分)与原变量(不同课程)之间的关系。
+png("lec12_15scores_loadings_plot6.png",width=600*3,height=3*400,res=72*3) 
+par(mfrow=c(2,3))
+#主成分分析之后的前两个主成分得分绘图
+plot(pca$loadings[,1], pca$loadings[,2],type="n")
+text(pca$loadings[,1],pca$loadings[,2],labels=rownames(pca$loadings),cex=0.8)
+plot(pca$loadings[,1], pca$loadings[,3],type="n")
+text(pca$loadings[,1],pca$loadings[,3],labels=rownames(pca$loadings),cex=0.8)
+plot(pca$loadings[,1], pca$loadings[,4],type="n")
+text(pca$loadings[,1],pca$loadings[,4],labels=rownames(pca$loadings),cex=0.8)
+plot(pca$loadings[,2], pca$loadings[,3],type="n")
+text(pca$loadings[,2],pca$loadings[,3],labels=rownames(pca$loadings),cex=0.8)
+plot(pca$loadings[,2], pca$loadings[,4],type="n")
+text(pca$loadings[,2],pca$loadings[,4],labels=rownames(pca$loadings),cex=0.8)
+plot(pca$loadings[,3], pca$loadings[,4],type="n")
+text(pca$loadings[,3],pca$loadings[,4],labels=rownames(pca$loadings),cex=0.8)
+dev.off()
+```
+![](lec12_15scores_loadings_plot6.png)
+
+### · 聚类分析
+```
+#差异表达基因筛选
+
+#变量初始化，用来存放计算结果中的p.value和fold change值 
+p=NULL
+fold.change=NULL
+#R 用 Sys.time()可以查看当前系统时间
+#程序开始时记录: 
+timestart<-Sys.time() #基因表达谱遍历
+for(i in 1:nrow(data)) {
+       a <- unlist(data[i,3:25])
+       b <- unlist(data[i,26:67])
+       fold.change<-c(fold.change,mean(a,na.rm=TRUE)/mean(b,na.rm=TRUE))
+       x<-t.test(a,b)
+       p<-c(p,x$p.value)
+}
+#程序临结束时记录:
+timeend<-Sys.time() #程序运行时间:
+
+#data 第一列探针名 IDs 作为 p 和 fold.change 的名称 
+names(p)<-data[,1]
+names(fold.change)<-data[,1]
+
+#设定阈值进行筛选
+p_value = 0.05
+up = 24 #lung cancer 上调2倍 
+down = 1/24 #lung cancer 下调2倍
+
+#筛选
+p2 <- p[p<p_value] #p值筛选
+fc.up <- fold.change[fold.change>up] #上调基因
+fc.down <- fold.change[fold.change<down] #下调基因 
+length(p2); 
+length(fc.up); 
+length(fc.down) #查看筛选结果
+
+#交集计算
+probes.up<-intersect(names(p2),names(fc.up)) #符合统计学显著性的上调基因 
+length(probes.up)
+
+probes.down<-intersect(names(p2),names(fc.down)) #符合统计学显著性的下调基因 
+length(probes.down)
+
+probes<-union(probes.up,probes.down) #合并合统计学显著性的上调和下调基因 #上述过程合并进行
+#probes <- intersect(names(p2),union(names(fc.up),names(fc.down))) 
+length(probes)
+
+subdata<-log(data[probes,3:67]) #从原始基因表达谱数据表中提取筛选出来的基因数据 
+
+rownames(subdata)<-probes #设定探针IDs为行标题
+nrow(subdata)
+```
+```
+#数据标准化前后的对比
+#注意表达水平数据矩阵的行列转换，原数据矩阵列为样本，行为基因(探针)，后续分析需要进行行列转置。
+
+#数据标准化，除以方差
+subdata2<-scale(t(subdata), center=T, scale=T)
+rownames(subdata2)<-rep(1:65) #使用数据编号代替样本名称
+#subdata2
+png("lec12_gds4794_clustering_boxplot1.png",width=600*3,height=300*3,res=72*3) 
+par(mfrow=c(1,2),las=2)
+boxplot(t(subdata))
+boxplot(subdata2)
+dev.off()
+```
+![](lec12_gds4794_clustering_boxplot1.png)
+
+```
+#层次聚类
+#根据标准化的基因表达水平计算不同样本之间的距离，然后按照“最短距离”策略急性层次聚类分析
+d<-dist(subdata2, method = "euclidean")
+#r语言中使用hclust(d, method = "complete", members=NULL) 来进行层次聚类。 
+hc<-hclust(d,"single") 
+png("lec12_gds4794_clustering_tree_plot.png",width=600,height=300) 
+plot(hc)
+dev.off()
+```
+![](lec12_gds4794_clustering_tree_plot.png)
+
+```
+#确定分类
+#根据 2.4 步的绘图结果，自己选择合适的分类参数 k 来确定分类结果，并对分类结果加以探讨
+png("lec12_gds4794_clustering_tree_plot2.png", width=600,height=300)
+plot(hc )
+rect.hclust(hc,k=3)
+dev.off()
+result=cutree(hc,k=3) #该函数可以用来提取每个样本的所属类别
+result
+```
+![](lec12_gds4794_clustering_tree_plot2.png)
+
+## <a id="8"></a>8. 时间序列数据分析
+```
+#折线图
+data <- read.table('1_4.txt', header=T, sep=' ')
+data
+year <- data[,1]
+total <- data[,2]
+urban_area <- data[,3]
+rural_area <- data[,4]
+png('1_4.png')
+plot(x=year,y=total,col='red',type='o',pch=1,ylim=c(0,180),main='The rate of circulation system disease in urban and rural areas',ylab='')
+lines(x=year,y=urban_area,col='blue',type='o',pch=2,ylim=c(0,180))
+lines(x=year,y=rural_area,col='green',type='o',pch=3,ylim=c(0,180))
+legend('topright',c('total','urban_area','rural_area'),col=c('red', 'blue', 'green'),pch=c(1,2,3))
+dev.off()
+```
+![](1_4.png)
