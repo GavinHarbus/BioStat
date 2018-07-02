@@ -96,7 +96,7 @@ sirna：http://www.imtech.res.in/raghava/desirm/
 密码子偏好性优化：http://www.jcat.de/CAICalculation.jsp
 
 ```
-###<a id="2"></a>绪论
+### <a id="2"></a>绪论
 ```
 *	基因组》单倍体基因组
 1.核/染色体基因组
