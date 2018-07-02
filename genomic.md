@@ -1,4 +1,4 @@
-##Genomic
+## Genomic
 * [相关数据库](#1)
 * [绪论](#2)
 * [遗传图与物理图绘制](#3)
@@ -9,7 +9,7 @@
 * [RNA序列分析](#8)
 * [题目](#9)
 
-###<a id="1"></a>相关数据库
+### <a id="1"></a>相关数据库
 ```
 基因组图谱数据库：
 Genbank-Genome-Map viewer
@@ -142,7 +142,7 @@ sirna：http://www.imtech.res.in/raghava/desirm/
 
 
 ```
-###<a id="3"></a>遗传图与物理图绘制
+### <a id="3"></a>遗传图与物理图绘制
 ```
 1.	遗传图【连锁图】：基因/DAN标志在染色体上的相对位置与遗传距离，显示基因以及其他序列特征在基因组上位置的图。
 遗传距离通常以基因或 DNA 片段在染 色体交换过程中的分离频率厘摩 （ cM ）来表示：
@@ -181,7 +181,7 @@ sirna：http://www.imtech.res.in/raghava/desirm/
   8.5.辐射杂交作图X-ray breakage
 ```
 ![](pattern/1.png)
-###<a id="4"></a>基因组测序
+### <a id="4"></a>基因组测序
 ```
 1.	第一代DNA测序【sanger测序技术】：
 1.1.	原理：以待测DNA为模板，使用带有标记的碱基类似物体外合成新链，可在任意一个碱基位置终止 =》凝胶电泳时形成彼此只差一个碱基的梯形条带 =》得到序列。
@@ -225,7 +225,7 @@ PS:SAM 是一种序列比对格式标准， 由 sanger 制定，是以TAB为分�
 SAM分为两部分：注释信息部分（header section）、比对结果部分（alignment section）
 7.	GenomeABC: http://crdd.osdd.net/raghava/genomeabc/
 ```
-###<a id="5"></a>基因组序列组装
+### <a id="5"></a>基因组序列组装
 ```
 1.	序列组装的基本理论
 1.1.	流程：
@@ -397,7 +397,7 @@ https://www.ebi.ac.uk/Tools/sss/fasta/
 8.12.二代测序NGS比对（4）
       BWA、Bowtie、Bowtie2(=》illumina,solid)、samtools、
 ```
-###<a id="6"></a>新基因发现与基因结构建模
+### <a id="6"></a>新基因发现与基因结构建模
 ```
 1.	新基因范畴：
 1.1.	该物种没有报道 =》 同源基因搜索
@@ -742,7 +742,7 @@ Ps: 对外界刺激信号的响应【各种应答反应？？？】 =》主要�
 3. 使用启动子和转录因子分析工具进行分析和预测
 4. 克隆引物设计
 ```
-###<a id="7"></a>基因组进化研究内容
+### <a id="7"></a>基因组进化研究内容
 ```
 1.	传统的生物进化论：达尔文
 2.	寒武纪生命大爆发=》奥陶纪辐射=》志留纪=》泥盆纪=》二叠纪-三叠纪=》侏罗纪=》白垩纪=》古近纪
@@ -822,7 +822,7 @@ Genebank- Genome数据库中下载多种真菌或细菌的基因组序列
    使用Mauve进行获得进化树
 =》相互比较
 ```
-###<a id="8"></a>RNA序列分析
+### <a id="8"></a>RNA序列分析
 ```
 Coding RNA------mRNA
 Non-coding RNA （ncRNA):
@@ -890,7 +890,7 @@ Atgaaggttctgtgggctgcgttgctggtcacattcctggcaggatgccaggccaaggtggagcaagcggtggagacaga
 图表 1.密码子优化结果
 =》将优化前后的序列导入”RNAfold WebServer”进行比较 http://rna.tbi.univie.ac.at/cgi-bin/RNAWebSuite/RNAfold.cgi
 ```
-###<a id="9"></a>题目
+### <a id="9"></a>题目
 ```
 （        ）1、	下列哪个基因位于人类基因组2号染色体的1到100,000区间内？
 A. APOB			B. ALK				C. MSH2			D.** FAM110C**
